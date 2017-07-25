@@ -11,9 +11,6 @@ var browserify = require('browserify');
 var watchify = require('watchify');
 var babel = require('babelify');
 
-//var inject = require('gulp-inject');
-//var webserver = require('gulp-webserver');
-
 
 gulp.task('styles', function() {
    return  gulp.src('./resources/assets/sass/app.scss')
@@ -64,36 +61,10 @@ function watch() {
 gulp.task('build', function() { return compile(); });
 gulp.task('watch', function() { return watch(); });
 
-/*gulp.task('inject-dev', ['styles'], function(){
-     var sources = gulp.src(['./publicassets/css/app.css'], {read: false});
-
-    return gulp.src('./index.html')
-            .pipe(inject(sources))
-            .pipe(gulp.dest('.'));
-})*/
-
-/*gulp.task('inject-start', ['minify'], function(){
-    var sources = gulp.src(['./assets/css/*.min.css'], {read: false});
-
-   return gulp.src('./index.html')
-        .pipe(inject(sources))
-        .pipe(gulp.dest('.'));
-})*/
-
-/*gulp.task('webserver', function() {
-  gulp.src('./')
-    .pipe(webserver({
-        host: 'localhost',
-        path: '/',
-        port: 4200,
-        livereload: true
-    }));
-});*/
-
 //Watch task
 gulp.task('watch',function() {
     gulp.watch('./resources/assets/sass/**//*.scss',['styles']);
 });
 
-gulp.task('start', ['styles', 'minify', /*'inject-start', 'webserver'*/]);
-gulp.task('default', ['styles', 'build' /*'inject-dev', 'webserver', */,'watch']);
+gulp.task('start', ['styles', 'minify']);
+gulp.task('default', ['styles', 'build']);
