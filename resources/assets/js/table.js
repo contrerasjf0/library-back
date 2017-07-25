@@ -1,3 +1,4 @@
+import config from "./config";
  export default function(){
      
      $('#books-table').DataTable({
@@ -7,7 +8,7 @@
         scrollX: false,
         scrollCollapse: true,
         lengthMenu: [10, 25, 50, "All"],
-        ajax: 'http://library.app/api/book/list',
+        ajax: config.url+'/api/book/list',
         columnDefs:[
             {
                 targets: [ 0 ],

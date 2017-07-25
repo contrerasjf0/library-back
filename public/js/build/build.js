@@ -30,7 +30,7 @@ define(String.prototype, "padRight", "".padEnd);
 });
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"core-js/fn/regexp/escape":3,"core-js/shim":296,"regenerator-runtime/runtime":299}],2:[function(require,module,exports){
+},{"core-js/fn/regexp/escape":3,"core-js/shim":296,"regenerator-runtime/runtime":300}],2:[function(require,module,exports){
 /*!
  * Bootstrap v4.0.0-alpha.6 (https://getbootstrap.com)
  * Copyright 2011-2017 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
@@ -24967,7 +24967,254 @@ module.exports = require('./modules/_core');
 	return $.fn.dataTable;
 }));
 
-},{"jquery":298}],298:[function(require,module,exports){
+},{"jquery":299}],298:[function(require,module,exports){
+/*
+    JavaScript autoComplete v1.0.4
+    Copyright (c) 2014 Simon Steinberger / Pixabay
+    GitHub: https://github.com/Pixabay/JavaScript-autoComplete
+    License: http://www.opensource.org/licenses/mit-license.php
+*/
+
+var autoComplete = (function(){
+    // "use strict";
+    function autoComplete(options){
+        if (!document.querySelector) return;
+
+        // helpers
+        function hasClass(el, className){ return el.classList ? el.classList.contains(className) : new RegExp('\\b'+ className+'\\b').test(el.className); }
+
+        function addEvent(el, type, handler){
+            if (el.attachEvent) el.attachEvent('on'+type, handler); else el.addEventListener(type, handler);
+        }
+        function removeEvent(el, type, handler){
+            // if (el.removeEventListener) not working in IE11
+            if (el.detachEvent) el.detachEvent('on'+type, handler); else el.removeEventListener(type, handler);
+        }
+        function live(elClass, event, cb, context){
+            addEvent(context || document, event, function(e){
+                var found, el = e.target || e.srcElement;
+                while (el && !(found = hasClass(el, elClass))) el = el.parentElement;
+                if (found) cb.call(el, e);
+            });
+        }
+
+        var o = {
+            selector: 0,
+            source: 0,
+            minChars: 3,
+            delay: 150,
+            offsetLeft: 0,
+            offsetTop: 1,
+            cache: 1,
+            menuClass: '',
+            renderItem: function (item, search){
+                // escape special characters
+                search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                var re = new RegExp("(" + search.split(' ').join('|') + ")", "gi");
+                return '<div class="autocomplete-suggestion" data-val="' + item + '">' + item.replace(re, "<b>$1</b>") + '</div>';
+            },
+            onSelect: function(e, term, item){}
+        };
+        for (var k in options) { if (options.hasOwnProperty(k)) o[k] = options[k]; }
+
+        // init
+        var elems = typeof o.selector == 'object' ? [o.selector] : document.querySelectorAll(o.selector);
+        for (var i=0; i<elems.length; i++) {
+            var that = elems[i];
+
+            // create suggestions container "sc"
+            that.sc = document.createElement('div');
+            that.sc.className = 'autocomplete-suggestions '+o.menuClass;
+
+            that.autocompleteAttr = that.getAttribute('autocomplete');
+            that.setAttribute('autocomplete', 'off');
+            that.cache = {};
+            that.last_val = '';
+
+            that.updateSC = function(resize, next){
+                var rect = that.getBoundingClientRect();
+                that.sc.style.left = Math.round(rect.left + (window.pageXOffset || document.documentElement.scrollLeft) + o.offsetLeft) + 'px';
+                that.sc.style.top = Math.round(rect.bottom + (window.pageYOffset || document.documentElement.scrollTop) + o.offsetTop) + 'px';
+                that.sc.style.width = Math.round(rect.right - rect.left) + 'px'; // outerWidth
+                if (!resize) {
+                    that.sc.style.display = 'block';
+                    that.sc.classList.remove('hide')
+                    if (!that.sc.maxHeight) { that.sc.maxHeight = parseInt((window.getComputedStyle ? getComputedStyle(that.sc, null) : that.sc.currentStyle).maxHeight); }
+                    if (!that.sc.suggestionHeight) that.sc.suggestionHeight = that.sc.querySelector('.autocomplete-suggestion').offsetHeight;
+                    if (that.sc.suggestionHeight)
+                        if (!next) that.sc.scrollTop = 0;
+                        else {
+                            var scrTop = that.sc.scrollTop, selTop = next.getBoundingClientRect().top - that.sc.getBoundingClientRect().top;
+                            if (selTop + that.sc.suggestionHeight - that.sc.maxHeight > 0)
+                                that.sc.scrollTop = selTop + that.sc.suggestionHeight + scrTop - that.sc.maxHeight;
+                            else if (selTop < 0)
+                                that.sc.scrollTop = selTop + scrTop;
+                        }
+                }
+            }
+            addEvent(window, 'resize', that.updateSC);
+            document.body.appendChild(that.sc);
+
+            live('autocomplete-suggestion', 'mouseleave', function(e){
+                var sel = that.sc.querySelector('.autocomplete-suggestion.selected');
+                if (sel) setTimeout(function(){ sel.className = sel.className.replace('selected', ''); }, 20);
+            }, that.sc);
+
+            live('autocomplete-suggestion', 'mouseover', function(e){
+                var sel = that.sc.querySelector('.autocomplete-suggestion.selected');
+                if (sel) sel.className = sel.className.replace('selected', '');
+                this.className += ' selected';
+            }, that.sc);
+
+            live('autocomplete-suggestion', 'mousedown', function(e){
+                if (hasClass(this, 'autocomplete-suggestion')) { // else outside click
+                    var v = this.getAttribute('data-val');
+                    that.value = v;
+                    o.onSelect(e, v, this);
+                    that.sc.style.display = 'none';
+                    that.sc.classList.add("hide");
+
+                }
+            }, that.sc);
+
+            that.blurHandler = function(){
+                try { var over_sb = document.querySelector('.autocomplete-suggestions:hover'); } catch(e){ var over_sb = 0; }
+                if (!over_sb) {
+                    that.last_val = that.value;
+                    that.sc.style.display = 'none';
+                    that.sc.classList.add("hide");
+                    setTimeout(function(){
+                      that.sc.style.display = 'none';
+                      that.sc.classList.add("hide");
+                    }, 350); // hide suggestions on fast input
+                } else if (that !== document.activeElement) setTimeout(function(){ that.focus(); }, 20);
+            };
+            addEvent(that, 'blur', that.blurHandler);
+
+            var suggest = function(data, val){
+                if (!val) {
+                    var val = that.value;
+                }
+                that.cache[val] = data;
+                if (data.length && val.length >= o.minChars) {
+                    var s = '';
+                    for (var i=0;i<data.length;i++) s += o.renderItem(data[i], val);
+                    that.sc.innerHTML = s;
+                    that.updateSC(0);
+                }
+                else
+                    that.sc.style.display = 'none';
+                    that.sc.classList.add("hide");
+            }
+
+            that.keydownHandler = function(e){
+                var key = window.event ? e.keyCode : e.which;
+                // down (40), up (38)
+                if ((key == 40 || key == 38) && that.sc.innerHTML) {
+                    var next, sel = that.sc.querySelector('.autocomplete-suggestion.selected');
+                    if (!sel) {
+                        next = (key == 40) ? that.sc.querySelector('.autocomplete-suggestion') : that.sc.childNodes[that.sc.childNodes.length - 1]; // first : last
+                        next.className += ' selected';
+                        that.value = next.getAttribute('data-val');
+                    } else {
+                        next = (key == 40) ? sel.nextSibling : sel.previousSibling;
+                        if (next) {
+                            sel.className = sel.className.replace('selected', '');
+                            next.className += ' selected';
+                            that.value = next.getAttribute('data-val');
+                        }
+                        else { sel.className = sel.className.replace('selected', ''); that.value = that.last_val; next = 0; }
+                    }
+                    that.updateSC(0, next);
+                    return false;
+                }
+                // esc
+                else if (key == 27) {
+                  that.value = that.last_val;
+                  that.sc.style.display = 'none';
+                  that.sc.classList.add("hide");
+                }
+                // enter
+                else if (key == 13 || key == 9) {
+                    if (that.sc.style.display !== 'none') {
+                        e.preventDefault();
+                    }
+                    var sel = that.sc.querySelector('.autocomplete-suggestion.selected');
+                    if (sel && that.sc.style.display != 'none') {
+                      o.onSelect(e, sel.getAttribute('data-val'), sel);
+                      setTimeout(function(){
+                        that.sc.style.display = 'none';
+                        that.sc.classList.add("hide");
+                    }, 20); }
+                }
+            };
+            addEvent(that, 'keydown', that.keydownHandler);
+
+            that.keyupHandler = function(e){
+                var key = window.event ? e.keyCode : e.which;
+                if (!key || (key < 35 || key > 40) && key != 13 && key != 27) {
+                    var val = that.value;
+                    if (val.length >= o.minChars) {
+                        if (val != that.last_val) {
+                            that.last_val = val;
+                            clearTimeout(that.timer);
+                            if (o.cache) {
+                                if (val in that.cache) { suggest(that.cache[val]); return; }
+                                // no requests if previous suggestions were empty
+                                for (var i=1; i<val.length-o.minChars; i++) {
+                                    var part = val.slice(0, val.length-i);
+                                    if (part in that.cache && !that.cache[part].length) { suggest([]); return; }
+                                }
+                            }
+                            that.timer = setTimeout(function(){ o.source(val, suggest) }, o.delay);
+                        }
+                    } else {
+                        that.last_val = val;
+                        that.sc.style.display = 'none';
+                        that.sc.classList.add("hide");
+                    }
+                }
+            };
+            addEvent(that, 'keyup', that.keyupHandler);
+
+            that.focusHandler = function(e){
+                that.last_val = '\n';
+                that.keyupHandler(e)
+            };
+            if (!o.minChars) addEvent(that, 'focus', that.focusHandler);
+        }
+
+        // public destroy method
+        this.destroy = function(){
+            for (var i=0; i<elems.length; i++) {
+                var that = elems[i];
+                removeEvent(window, 'resize', that.updateSC);
+                removeEvent(that, 'blur', that.blurHandler);
+                removeEvent(that, 'focus', that.focusHandler);
+                removeEvent(that, 'keydown', that.keydownHandler);
+                removeEvent(that, 'keyup', that.keyupHandler);
+                if (that.autocompleteAttr)
+                    that.setAttribute('autocomplete', that.autocompleteAttr);
+                else
+                    that.removeAttribute('autocomplete');
+                document.body.removeChild(that.sc);
+                that = null;
+            }
+        };
+    }
+    return autoComplete;
+})();
+
+(function(){
+    if (typeof define === 'function' && define.amd)
+        define('autoComplete', function () { return autoComplete; });
+    else if (typeof module !== 'undefined' && module.exports)
+        module.exports = autoComplete;
+    else
+        window.autoComplete = autoComplete;
+})();
+
+},{}],299:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -35222,7 +35469,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],299:[function(require,module,exports){
+},{}],300:[function(require,module,exports){
 (function (global){
 /**
  * Copyright (c) 2014, Facebook, Inc.
@@ -35963,7 +36210,7 @@ return jQuery;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],300:[function(require,module,exports){
+},{}],301:[function(require,module,exports){
 /*! tether 1.4.0 */
 
 (function(root, factory) {
@@ -37776,7 +38023,7 @@ return Tether;
 
 }));
 
-},{}],301:[function(require,module,exports){
+},{}],302:[function(require,module,exports){
 /*!
  * typeahead.js 0.11.1
  * https://github.com/twitter/typeahead.js
@@ -40228,7 +40475,17 @@ return Tether;
         }
     })();
 });
-},{"jquery":298}],302:[function(require,module,exports){
+},{"jquery":299}],303:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+    url: 'http://superguardianes.app/'
+};
+
+},{}],304:[function(require,module,exports){
 'use strict';
 
 require('babel-polyfill');
@@ -40247,46 +40504,33 @@ var _table = require('./table');
 
 var _table2 = _interopRequireDefault(_table);
 
+var _javascriptAutocomplete = require('javascript-autocomplete');
+
+var _javascriptAutocomplete2 = _interopRequireDefault(_javascriptAutocomplete);
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*window.$ = window.jQuery = require('jquery');
-require('tether');
-require('bootstrap');
-const dataTable = require('datatables.net');*/
 $(document).ready(function () {
 
     (0, _datatables2.default)(window, $);
     (0, _table2.default)();
-    $('#category-id').typeahead({
-        minLength: 0,
-        highlight: true
-    }, {
-        source: function source(query, result) {
 
-            $.ajax({
-                url: "http://library.app/api/category/search",
-                data: 'query=' + query,
-                dataType: "json",
-                type: "POST",
-                success: function success(data) {
-                    result($.map(data, function (item) {
-                        return item;
-                    }));
-                }
-            });
+    new _javascriptAutocomplete2.default({
+        minChars: 1,
+        selector: '#category-id',
+        source: function source(term, response) {
+            $.post(_config2.default.url + "api/category/search", { query: term }, function (data) {
+                response(data);
+            }, 'json');
         }
     });
 });
-//import $ from "jquery";
-/*import {$,jQuery} from 'jquery';
 
-window.jQuery = window.$ = $;
-window.$ = $;
-window.jQuery = jQuery;*/
-
-//window.jQuery = window.$ = $;
-
-},{"./jquery-global":303,"./table":304,"babel-polyfill":1,"bootstrap":2,"datatables.net":297,"typeahead.js":301}],303:[function(require,module,exports){
+},{"./config":303,"./jquery-global":305,"./table":306,"babel-polyfill":1,"bootstrap":2,"datatables.net":297,"javascript-autocomplete":298,"typeahead.js":302}],305:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -40305,7 +40549,7 @@ window.$ = window.jQuery = _jquery2.default;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"jquery":298,"tether":300}],304:[function(require,module,exports){
+},{"jquery":299,"tether":301}],306:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -40321,7 +40565,7 @@ exports.default = function () {
         scrollX: false,
         scrollCollapse: true,
         lengthMenu: [10, 25, 50, "All"],
-        ajax: 'http://library.app/api/book/list',
+        ajax: _config2.default.url + '/api/book/list',
         columnDefs: [{
             targets: [0],
             visible: false,
@@ -40338,6 +40582,12 @@ exports.default = function () {
     });
 };
 
-},{}]},{},[302])
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+},{"./config":303}]},{},[304])
 
 //# sourceMappingURL=build.js.map

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Datatables;
 
 use App\Book;
+use App\Category;
 
 class BookController extends Controller
 {
@@ -42,7 +43,7 @@ class BookController extends Controller
 
         $book->name = $request->input('name');
         $book->autor = $request->input('autor');
-        $book->category_id = $request->input('category_id');
+        $book->category_id = $this->search($request->input('category_id'));
         $book->published_date = $request->input('published_date');
         $book->borrowed = false;
 
@@ -89,7 +90,7 @@ class BookController extends Controller
 
         $book->name = $request->input('name');
         $book->autor = $request->input('autor');
-        $book->category_id = $request->input('category_id');
+        $book->category_id = $this->search($request->input('category_id'));
         $book->published_date = $request->input('published_date');
         $book->borrowed = false;
 
@@ -136,5 +137,11 @@ class BookController extends Controller
                 ->rawColumns(['actions', 'borrowed'])
 
                 ->make(true);
+    }
+
+    private function search($category){
+        $categoryRow= Category::where('name', '=', $category)->get()->first();;
+
+        return $categoryRow->id;
     }
 }
